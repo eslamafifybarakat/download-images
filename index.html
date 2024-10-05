@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Table with Download</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap");
+      body {
+        font-family: "Cairo", sans-serif;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+
+      table,
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      td img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+      }
+
+      button,
+      input[type="text"] {
+        margin-top: 20px;
+        padding: 10px 20px;
+      }
+
+      input[type="text"] {
+        width: 200px;
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Items Table</h2>
+
+    <table id="itemsTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Image</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Dynamic Rows will be inserted here -->
+      </tbody>
+    </table>
+
+    <input type="text" id="zipFileName" placeholder="Enter zip file name" />
+    <button id="downloadImages">Download Images as Zip</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script>
+      // Sample data array
+      const items = [
+        {
+          name: "Item 1",
+          description: "Description 1",
+          price: "125",
+          size: "مقاسات ٤١.٤٦ جلد طبيعي",
+          image:
+            "https://scontent.faly8-2.fna.fbcdn.net/v/t39.30808-6/461947271_508737555289158_403803819234162867_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=uWWSqvgZjvwQ7kNvgECK4e5&_nc_ht=scontent.faly8-2.fna&_nc_gid=AyMtgvHbv8xCRH0SHlBSm_I&oh=00_AYCVBiIde1Coff6zdWkpeMwjKLmd6Zfl2praBbdYmCcd5w&oe=6705F4FA",
+        },
+        {
+          name: "Item 2",
+          description: "Description 2",
+          price: "150",
+          size: "مقاسات ٤٢.٤٨ جلد طبيعي",
+          image:
+            "https://media.istockphoto.com/id/173015527/photo/a-single-red-book-on-a-white-surface.jpg?s=612x612&w=0&k=20&c=AeKmdZvg2_bRY2Yct7odWhZXav8CgDtLMc_5_pjSItY=",
+        },
+        {
+          name: "Item 3",
+          description: "Description 3",
+          price: "200",
+          size: "مقاسات ٤٣.٤٩ جلد طبيعي",
+          image:
+            "https://media.istockphoto.com/id/173015527/photo/a-single-red-book-on-a-white-surface.jpg?s=612x612&w=0&k=20&c=AeKmdZvg2_bRY2Yct7odWhZXav8CgDtLMc_5_pjSItY=",
+        },
+      ];
+
+      // Function to populate the table
+      function populateTable() {
+        const tableBody = document.querySelector("#itemsTable tbody");
+        tableBody.innerHTML = ""; // Clear any existing rows
+
+        items.forEach((item) => {
+          const row = document.createElement("tr");
+
+          const nameCell = document.createElement("td");
+          nameCell.textContent = item.name;
+          row.appendChild(nameCell);
+
+          const descriptionCell = document.createElement("td");
+          descriptionCell.textContent = item.description;
+          row.appendChild(descriptionCell);
+
+          const imageCell = document.createElement("td");
+          const imgElement = document.createElement("img");
+          imgElement.src = item.image;
+          imageCell.appendChild(imgElement);
+          row.appendChild(imageCell);
+
+          tableBody.appendChild(row);
+        });
+      }
+
+      // Function to calculate font size based on text length
+      function calculateFontSize(text) {
+        const baseSize = 20; // Base font size
+        const lengthFactor = 2; // Increase font size for each character
+        return `${baseSize + text.length * lengthFactor}px`;
+      }
+
+      // Function to resize an image to 400x400 and add a design using a canvas
+      // Function to resize an image to a fixed height and add a design using a canvas
+      function resizeAndAddDesign(
+        imgUrl,
+        price,
+        sizeText,
+        position,
+        additionalImgUrl, // URL للصورة الإضافية
+        additionalImgPosition, // موضع الصورة الإضافية
+        fontSize = "17",
+        fontStyle = "Cairo",
+        priceFontSize = "38",
+        priceFontStyle = "Roboto",
+        code = "OO6775",
+        number = "w43",
+        addToText = 0,
+        barHeight = 90
+      ) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          const badgeImg = new Image(); // إضافة صورة البادج (النجمة)
+          const additionalImg = new Image(); // الصورة الإضافية
+
+          img.crossOrigin = "Anonymous"; // Handle CORS for external images
+          img.onload = function () {
+            badgeImg.onload = function () {
+              additionalImg.onload = function () {
+                const canvas = document.createElement("canvas");
+                canvas.width = 600;
+                canvas.height = 600; // Keep the same height as the image
+                const ctx = canvas.getContext("2d");
+                index = canvas.width;
+                if (canvas.height >= 500 && canvas.height < 700) {
+                  barHeight = 100;
+                } else if (canvas.height >= 700 && canvas.height < 700) {
+                  barHeight = 115;
+                } else if (canvas.height >= 900) {
+                  barHeight = 125;
+                }
+                // Draw the main image covering the upper part of the canvas
+                ctx.drawImage(
+                  img,
+                  0,
+                  0,
+                  canvas.width,
+                  canvas.height - barHeight
+                ); // Draw image in the top part
+
+                // Create the yellow background bar at the bottom of the canvas
+                ctx.fillStyle = "#ffeb3b"; // Yellow
+                ctx.fillRect(
+                  0,
+                  canvas.height - barHeight,
+                  canvas.width,
+                  barHeight
+                ); // Drawing the yellow bar at the bottom part of the canvas
+
+                // Draw the star badge image
+                const badgeWidth = canvas.width + 100; // Set the width of the badge
+                const badgeHeight = canvas.height + 100; // Set the height of the badge
+                ctx.drawImage(
+                  badgeImg,
+                  -165 - ((badgeWidth - 400) / 400) * 200,
+                  canvas.height - (280 + ((badgeHeight - 400) / 400) * 220),
+                  badgeWidth,
+                  badgeHeight
+                ); // Adjust position and size of the badge
+
+                // Draw the additional image at the specified position
+                const additionalImgWidth = 100; // Set the width of the additional image
+                const additionalImgHeight = 10; // Set the height of the additional image
+                ctx.drawImage(
+                  additionalImg,
+                  175 + addToText * 70,
+                  canvas.height - 78,
+                  additionalImgWidth + 10,
+                  additionalImgHeight
+                ); // Draw the additional image
+                if (canvas.width > 400) {
+                  barHeight = 110;
+                  addToText = (canvas.width - 400) / 400;
+                }
+
+                ctx.fillStyle = "red"; // Black text for price
+                ctx.font = `bold   ${
+                  +fontSize + fontSize * addToText
+                }px ${priceFontStyle}`; // Use the price font size and style
+                ctx.fillText(
+                  code,
+                  125 + addToText * 70,
+                  canvas.height - 60 - addToText * 30
+                );
+
+                ctx.fillStyle = "black"; // Black text for price
+                ctx.font = `bold ${
+                  +fontSize + fontSize * addToText
+                }px ${priceFontStyle}`; // Use the price font size and style
+                ctx.fillText(
+                  number,
+                  150 + addToText * 70,
+                  canvas.height - 40 - addToText * 10
+                );
+
+                // Add the price text on the yellow bar
+                ctx.fillStyle = "#ffffff"; // Black text for price
+                ctx.font = `bold   ${
+                  +priceFontSize + (priceFontSize * addToText - 2)
+                }px ${priceFontStyle}`; // Use the price font size and style
+                ctx.fillText(price, 22, canvas.height - 70); // Text inside the yellow bar
+
+                ctx.fillStyle = "#000000"; // Black text for Arabic
+                ctx.font = `bold ${
+                  +fontSize + fontSize * addToText
+                }px ${fontStyle}`; // Use the font size and style for the Arabic text
+                ctx.fillText(
+                  "شبشب رجالي جلد طبيعي",
+                  canvas.width - (185 + fontSize * addToText * 13),
+                  canvas.height - (70 + fontSize * addToText)
+                ); // Adjust x-coordinate for right alignment
+
+                // Calculate font size based on the size text
+                const dynamicFontSize = calculateFontSize(sizeText);
+                ctx.fillStyle = "#000000"; // Black text for dynamic size
+                ctx.font = dynamicFontSize; // Use calculated font size for the size text
+                ctx.fillText(
+                  sizeText,
+                  canvas.width - (190 + fontSize * addToText * 13),
+                  canvas.height - 45
+                ); // Adjust x-coordinate for right alignment
+
+                ctx.fillStyle = "#ff0000";
+                ctx.font = ` ${
+                  +fontSize + fontSize * addToText
+                }px ${fontStyle}`; // Use the font size and style for the Arabic text
+                ctx.fillText(
+                  "اضافه جمله هنا.. تضاف يدويا حسب الرغبه ",
+                  canvas.width - (290 + fontSize * addToText * 18),
+                  canvas.height - 10
+                );
+
+                // Return the modified image as a blob
+                canvas.toBlob((blob) => resolve(blob), "image/jpeg");
+              };
+
+              additionalImg.src = "./line.PNG";
+            };
+
+            badgeImg.src = "./price.png";
+          };
+          img.src = imgUrl; // تعيين مصدر صورة المنتج
+        });
+      }
+
+      // Function to download images as a zip file
+      async function downloadImagesAsZip() {
+        const zip = new JSZip();
+        const imgFolder = zip.folder("images");
+
+        const downloadPromises = items.map(async (item, index) => {
+          const position = index + 1; // Position in the array
+          const resizedBlob = await resizeAndAddDesign(
+            item.image,
+            item.price,
+            item.size,
+            position
+          );
+          imgFolder.file(`image${position}.jpg`, resizedBlob);
+        });
+
+        // Wait for all images to be resized and added to the zip
+        await Promise.all(downloadPromises);
+
+        // Get the file name from input or default to 'images.zip'
+        const zipFileName =
+          document.getElementById("zipFileName").value || "images";
+
+        // Generate the zip file and trigger download
+        zip.generateAsync({ type: "blob" }).then(function (blob) {
+          saveAs(blob, `${zipFileName}.zip`);
+        });
+      }
+
+      // Event listener for the download button
+      document
+        .getElementById("downloadImages")
+        .addEventListener("click", downloadImagesAsZip);
+
+      // Initial population of the table
+      populateTable();
+    </script>
+  </body>
+</html>
